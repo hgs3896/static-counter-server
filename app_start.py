@@ -13,15 +13,14 @@ app.debug = False
 
 @app.route('/<int:year>/<int:month>/<int:day>', methods=['GET'])
 def serve_image(year, month, day):
-    if not (1990 <= year <= 2021 and 1<= month <= 12 and 1 <= day <= 31):
+    if not (1990 <= year <= 2021 and 1 <= month <= 12 and 1 <= day <= 31):
         return app.send_static_file('base.jpg')
     filename = f'{year:04d}-{month:02d}-{day:02d}.jpg'
     dday = date(year, month, day)
     delta = dday - date.today()
     if path.exists(filename) and path.getmtime(filename) - time.localtime() < 1000*10:
         return app.send_static_file(filename)
-    target_img = Image.new("RGB", (260, 50), color = (255, 255, 255))        
-    
+    target_img = Image.new("RGB", (260, 50), color = (255, 255, 255))    
     draw = ImageDraw.Draw(target_img)
     msg = f'전역까지 {delta.days}일 남았습니다'
     fnt = ImageFont.truetype("fonts/malgun.ttf", 20, encoding="UTF-8")
