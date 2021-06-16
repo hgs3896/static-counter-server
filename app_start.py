@@ -1,10 +1,11 @@
 from flask import Flask, request, redirect, url_for, send_from_directory, render_template
 from PIL import Image, ImageDraw, ImageFont
 from datetime import date
-from os import path
+from os import path, environ
 import time
 app = Flask(__name__)
 app.debug = False
+port = 8080
 
 # Routes
 # @app.route('/', methods=['GET'])
@@ -29,5 +30,10 @@ def serve_image(year, month, day):
     return app.send_static_file(filename)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=80, threaded=True)
+    try:
+        port = int(environ['PORT'])
+    except:
+        pass
+    print(port)
 
+    app.run(host='0.0.0.0', port=port, threaded=True)
