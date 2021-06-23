@@ -16,7 +16,7 @@ def docache(hours=24):
             r = f(*args, **kwargs)            
             next_day = datetime.fromisoformat(datetime.utcnow().strftime("%Y-%m-%d")) + timedelta(hours=hours+9)            
             r.headers.add('Expires', next_day.strftime("%a, %d %b %Y %H:%M:%S GMT"))
-            r.headers.add('Cache-Control', 'public,max-age=%d' % int(60 * 60 * hours))
+            r.headers.add('Cache-Control', 'public,must-revalidate')
             return r
         return wrapped_f
     return fwrap
