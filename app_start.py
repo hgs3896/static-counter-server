@@ -1,4 +1,5 @@
 from flask import Flask, Response
+from werkzeug.serving import WSGIRequestHandler
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime, date, timedelta
 from functools import wraps
@@ -16,10 +17,15 @@ def docache(hours=24):
         @wraps(f)
         def wrapped_f(*args, **kwargs):
             r: Response = f(*args, **kwargs)
-
-            r.cache_control.public = True
             next_day = datetime.fromisoformat(
                 datetime.utcnow().strftime("%Y-%m-%d")) + timedelta(hours=hours+9)
+            r.cache_control.no_cache = None
+            r.cache_control.must_revalidate = True
+            r.cache_control.public = True
+            # r.cache_control.max_age = (next_day - datetime.utcnow()).seconds
+            last_modified = r.last_modified.strftime(
+                "%a, %d %b %Y %H:%M:%S GMT")
+            r.set_etag(md5(last_modified.encode('utf-8')).hexdigest())
             r.expires = next_day
             return r
         return wrapped_f
@@ -38,26 +44,19 @@ def serve_image(year, month, day) -> Response:
         validity = False
 
     if not validity:
-        res = app.send_static_file('base.jpg')
-        # res.headers.add('debug', 'not valid')
-        return res
+        return app.send_static_file('base.jpg')
 
     filename = f'{year:04d}-{month:02d}-{day:02d}.jpg'
     delta = dday - date.today()
     days_left = delta.days
 
+    # 이미 존재하는 파일은 캐싱 처리
     if path.exists('static/' + filename):
         cur_time = datetime.today()
         last_modified_time = datetime.fromtimestamp(
             path.getmtime('static/'+filename))
         if cur_time.day == last_modified_time.day:
-            res = app.send_static_file(filename)
-            # res.headers.add('debug', 'exists')
-            utc_last_modified_time = last_modified_time + timedelta(hours=9)
-            last_modified = utc_last_modified_time.strftime(
-                "%a, %d %b %Y %H:%M:%S GMT")
-            res.set_etag(md5(last_modified.encode('utf-8')).hexdigest())
-            return res
+            return app.send_static_file(filename)
 
     msg = ''
     if days_left > 0:
@@ -66,10 +65,7 @@ def serve_image(year, month, day) -> Response:
         msg = f'{year:04d}/{month:02d}/{day:02d}부로 전역했습니다!'
 
     make_static_image(filename, msg)
-
-    res = app.send_static_file(filename)
-    # res.headers.add('debug', 'newly made')
-    return res
+    return app.send_static_file(filename)
 
 
 def make_static_image(filename, msg):
@@ -88,4 +84,5 @@ if __name__ == "__main__":
         port = int(environ['PORT'])
     except:
         pass
+    WSGIRequestHandler.protocol_version = "HTTP/1.1"
     app.run(host='0.0.0.0', port=port, threaded=True)
