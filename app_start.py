@@ -1,7 +1,7 @@
 from flask import Flask, Response
 from werkzeug.serving import WSGIRequestHandler
 from PIL import Image, ImageDraw, ImageFont
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone, time
 from functools import wraps
 from os import path, environ
 from hashlib import md5
@@ -9,16 +9,16 @@ from hashlib import md5
 app = Flask(__name__)
 app.debug = False
 port = 8080
+korean_tz = timezone(timedelta(hours=9))
 
-
-def docache(hours=24):
+def docache():
     """ Flask decorator that allow to set Expire and Cache headers. """
     def fwrap(f):
         @wraps(f)
         def wrapped_f(*args, **kwargs):
             r: Response = f(*args, **kwargs)
-            next_day = datetime.fromisoformat(
-                datetime.utcnow().strftime("%Y-%m-%d")) + timedelta(hours=hours+9)
+            next_day = datetime.combine(
+                (datetime.now(korean_tz) + timedelta(days=1)).date(), time(), tzinfo=korean_tz)
             r.cache_control.no_cache = None
             r.cache_control.must_revalidate = True
             r.cache_control.public = True
@@ -26,7 +26,7 @@ def docache(hours=24):
             last_modified = r.last_modified.strftime(
                 "%a, %d %b %Y %H:%M:%S GMT")
             r.set_etag(md5(last_modified.encode('utf-8')).hexdigest())
-            r.expires = next_day
+            r.expires = next_day.astimezone(tz=timezone.utc)
             return r
         return wrapped_f
     return fwrap
