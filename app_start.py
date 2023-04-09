@@ -1,4 +1,4 @@
-from flask import Flask, Response
+from flask import Flask, Response, abort
 from werkzeug.serving import WSGIRequestHandler
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime, date, timedelta, timezone, time
@@ -35,7 +35,7 @@ def docache():
 @app.route('/<int:year>/<int:month>/<int:day>', methods=['GET'])
 @docache()
 def serve_image(year, month, day) -> Response:
-    validity = 1990 <= year <= 2021 and 1 <= month <= 12 and 1 <= day <= 31
+    validity = 1990 <= year <= 2100 and 1 <= month <= 12 and 1 <= day <= 31
 
     dday = datetime.now()
     try:
@@ -44,7 +44,7 @@ def serve_image(year, month, day) -> Response:
         validity = False
 
     if not validity:
-        return app.send_static_file('base.jpg')
+        abort(404)
 
     filename = f'{year:04d}-{month:02d}-{day:02d}.jpg'
     delta = dday - date.today()
@@ -84,5 +84,4 @@ if __name__ == "__main__":
         port = int(environ['PORT'])
     except:
         pass
-    WSGIRequestHandler.protocol_version = "HTTP/1.1"
-    app.run(host='0.0.0.0', port=port, threaded=True)
+    app.run(host='0.0.0.0', port=port, threaded=True, ssl_context='adhoc')
